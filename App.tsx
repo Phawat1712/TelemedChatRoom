@@ -1,45 +1,34 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React, { useState } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import UserSelectScreen from './src/screens/UserSelectScreen';
+import ChatScreen from './src/screens/ChatScreen';
+
+type ChatParams = {
+  conversationID: number;
+  currentUserID: number;
+  targetUserID: number;
+};
 
 function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+  const [chatParams, setChatParams] = useState<ChatParams | null>(null);
 
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
+      {chatParams ? (
+        <ChatScreen
+          conversationID={chatParams.conversationID}
+          currentUserID={chatParams.currentUserID}
+          targetUserID={chatParams.targetUserID}
+          onBack={() => setChatParams(null)}
+        />
+      ) : (
+        <UserSelectScreen
+          onStartChat={params => setChatParams(params)}
+        />
+      )}
     </SafeAreaProvider>
   );
 }
-
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
 
 export default App;
