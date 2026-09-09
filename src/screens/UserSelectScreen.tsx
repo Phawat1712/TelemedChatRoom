@@ -63,26 +63,21 @@ export default function UserSelectScreen({ onStartChat }: Props) {
       return;
     }
 
-    const doctorUserID =
-      role === 'doctor' ? currentUserID : targetUserID;
+    const doctorUserID = role === 'doctor' ? currentUserID : targetUserID;
 
-    const patientUserID =
-      role === 'patient' ? currentUserID : targetUserID;
+    const patientUserID = role === 'patient' ? currentUserID : targetUserID;
 
     try {
-      const response = await fetch(
-        'http://119.59.114.31:9060/Chat/Create',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            doctorUserID,
-            patientUserID,
-          }),
+      const response = await fetch('http://119.59.114.31:9060/Chat/Create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      );
+        body: JSON.stringify({
+          doctorUserID,
+          patientUserID,
+        }),
+      });
 
       const result = await response.json();
 
@@ -114,7 +109,7 @@ export default function UserSelectScreen({ onStartChat }: Props) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Chat Room</Text>
+      <Text style={styles.title}>Telemed ChatRoom</Text>
 
       <Text style={styles.label}>เข้าใช้งานเป็น</Text>
 
@@ -168,55 +163,84 @@ export default function UserSelectScreen({ onStartChat }: Props) {
         data={currentUsers}
         keyExtractor={item => item.userID.toString()}
         scrollEnabled={false}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={[
-              styles.userItem,
-              currentUserID === item.userID &&
-                styles.userItemSelected,
-            ]}
-            onPress={() => setCurrentUserID(item.userID)}
-          >
-            <Text>
-              {item.name} {item.lastname}
-            </Text>
-          </TouchableOpacity>
-        )}
+        renderItem={({ item }) => {
+          const selected = currentUserID === item.userID;
+
+          return (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[styles.userItem, selected && styles.userItemSelected]}
+              onPress={() => setCurrentUserID(item.userID)}
+            >
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{item.name?.charAt(0)}</Text>
+              </View>
+
+              <View style={{ flex: 1 }}>
+                <Text style={styles.userName}>
+                  {item.name} {item.lastname}
+                </Text>
+
+                <Text style={styles.userSubText}>User ID: {item.userID}</Text>
+              </View>
+
+              <View
+                style={[
+                  styles.radioOuter,
+                  selected && styles.radioOuterSelected,
+                ]}
+              >
+                {selected && <View style={styles.radioInner} />}
+              </View>
+            </TouchableOpacity>
+          );
+        }}
       />
 
       <Text style={styles.label}>
-        {role === 'doctor'
-          ? 'เลือกคนไข้ที่จะคุย'
-          : 'เลือกหมอที่จะคุย'}
+        {role === 'doctor' ? 'เลือกคนไข้ที่จะคุย' : 'เลือกหมอที่จะคุย'}
       </Text>
 
       <FlatList
         data={targetUsers}
         keyExtractor={item => item.userID.toString()}
         scrollEnabled={false}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={[
-              styles.userItem,
-              targetUserID === item.userID &&
-                styles.userItemSelected,
-            ]}
-            onPress={() => setTargetUserID(item.userID)}
-          >
-            <Text>
-              {item.name} {item.lastname}
-            </Text>
-          </TouchableOpacity>
-        )}
+        renderItem={({ item }) => {
+          const selected = targetUserID === item.userID;
+
+          return (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[styles.userItem, selected && styles.userItemSelected]}
+              onPress={() => setTargetUserID(item.userID)}
+            >
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{item.name?.charAt(0)}</Text>
+              </View>
+
+              <View style={{ flex: 1 }}>
+                <Text style={styles.userName}>
+                  {item.name} {item.lastname}
+                </Text>
+
+                <Text style={styles.userSubText}>User ID: {item.userID}</Text>
+              </View>
+
+              <View
+                style={[
+                  styles.radioOuter,
+                  selected && styles.radioOuterSelected,
+                ]}
+              >
+                {selected && <View style={styles.radioInner} />}
+              </View>
+            </TouchableOpacity>
+          );
+        }}
       />
 
-      <TouchableOpacity
-        style={styles.startButton}
-        onPress={handleStartChat}
-      >
-        <Text style={styles.startButtonText}>
-          เริ่มแชท
-        </Text>
+      <TouchableOpacity style={styles.startButton} onPress={handleStartChat}>
+        <Text style={styles.startButtonText}>เริ่มแชท</Text>
       </TouchableOpacity>
     </View>
   );
@@ -225,75 +249,165 @@ export default function UserSelectScreen({ onStartChat }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    paddingTop: 50,
-    backgroundColor: '#fff',
+    paddingHorizontal: 20,
+    paddingTop: 56,
+    paddingBottom: 54,
+    backgroundColor: '#FFF7FA',
   },
 
   title: {
     fontSize: 28,
-    fontWeight: '700',
-    marginBottom: 30,
+    fontWeight: '800',
+    color: '#F43879',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+
+  subtitle: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    marginBottom: 28,
   },
 
   label: {
     fontSize: 16,
-    fontWeight: '600',
-    marginTop: 20,
+    fontWeight: '700',
+    color: '#333',
+    marginTop: 18,
     marginBottom: 10,
   },
 
   roleContainer: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 12,
   },
 
   roleButton: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#ddd',
-    paddingVertical: 12,
-    borderRadius: 10,
+    borderColor: '#F6C7D7',
+    paddingVertical: 14,
+    borderRadius: 16,
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
   },
 
   roleButtonSelected: {
-    backgroundColor: '#2196F3',
+    borderColor: '#F43879',
+    backgroundColor: '#FFF0F5',
   },
 
   roleText: {
-    color: '#333',
-  },
-
-  roleTextSelected: {
-    color: '#fff',
+    color: '#777',
+    fontSize: 15,
     fontWeight: '600',
   },
 
+  roleTextSelected: {
+    color: '#F43879',
+    fontWeight: '800',
+  },
+
   userItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 8,
+    borderColor: '#F1D5DF',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 10,
+    backgroundColor: '#FFFFFF',
+
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+
+    elevation: 2,
   },
 
   userItemSelected: {
-    borderColor: '#2196F3',
-    backgroundColor: '#EAF4FF',
+    borderColor: '#F43879',
+    backgroundColor: '#FFF0F5',
+  },
+
+  userName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#333',
+  },
+
+  userSubText: {
+    marginTop: 3,
+    fontSize: 12,
+    color: '#999',
   },
 
   startButton: {
-    marginTop: 25,
-    backgroundColor: '#2196F3',
-    paddingVertical: 14,
-    borderRadius: 12,
+    marginTop: 24,
+    backgroundColor: '#F43879',
+    paddingVertical: 15,
+    borderRadius: 18,
     alignItems: 'center',
+
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+
+    elevation: 4,
+  },
+
+  startButtonDisabled: {
+    backgroundColor: '#F6B7CD',
   },
 
   startButtonText: {
-    color: '#fff',
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontWeight: '800',
     fontSize: 16,
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFE2EC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+
+  avatarText: {
+    color: '#F43879',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+
+  radioOuter: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: '#DDD',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  radioOuterSelected: {
+    borderColor: '#F43879',
+  },
+
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#F43879',
   },
 });
