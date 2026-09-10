@@ -28,7 +28,7 @@ type Message = {
   messageType: number;
   message: string | null;
   createdDate: string;
-
+  readDate?: string | null;
   fileName?: string;
   fileURL?: string;
   fileType?: string;
@@ -56,9 +56,18 @@ export default function ChatScreen({
   const [playingMessageID, setPlayingMessageID] = useState<number | null>(null);
   const [audioPosition, setAudioPosition] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
+  const [isTargetTyping, setIsTargetTyping] = useState(false);
 
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const isTypingSentRef = useRef(false);
   useEffect(() => {
-    loadMessages();
+    const initChat = async () => {
+      await loadMessages();
+      await markAsRead();
+    };
+
+    initChat();
   }, [conversationID]);
 
   useEffect(() => {
@@ -108,7 +117,6 @@ export default function ChatScreen({
     const handleReceiveMessage = async (message: Message) => {
       console.log('ReceiveMessage:', message);
 
-      // Text ใส่ state ได้เลย
       if (message.messageType === 1) {
         setMessages(prev => {
           const exists = prev.some(x => x.messageID === message.messageID);
@@ -119,21 +127,48 @@ export default function ChatScreen({
 
           return [...prev, message];
         });
-
-        return;
+      } else {
+        // image / file / voice
+        await loadMessages();
       }
 
-      // Image / File / Voice
-      // โหลดจาก API ใหม่เพื่อเอาข้อมูล attachment ที่ครบ
-      await loadMessages();
+      // ถ้าเป็นข้อความที่อีกฝ่ายส่งมา
+      // และเรากำลังอยู่ในห้องนี้
+      if (message.senderUserID !== currentUserID) {
+        await markAsRead();
+      }
+    };
+
+    const handleMessagesRead = (data: {
+      conversationID: number;
+      readerUserID: number;
+      messageIDs: number[];
+      readDate: string;
+    }) => {
+      console.log('MessagesRead:', data);
+
+      setMessages(prev =>
+        prev.map(message =>
+          data.messageIDs.includes(message.messageID)
+            ? {
+                ...message,
+                readDate: data.readDate,
+              }
+            : message,
+        ),
+      );
     };
 
     chatConnection.on('ReceiveMessage', handleReceiveMessage);
+
+    chatConnection.on('MessagesRead', handleMessagesRead);
 
     connectSignalR();
 
     return () => {
       chatConnection.off('ReceiveMessage', handleReceiveMessage);
+
+      chatConnection.off('MessagesRead', handleMessagesRead);
 
       if (chatConnection.state === signalR.HubConnectionState.Connected) {
         chatConnection
@@ -603,6 +638,75 @@ export default function ChatScreen({
     }
   };
 
+  const markAsRead = async () => {
+    try {
+      const response = await fetch(
+        'http://119.59.114.31:9060/Chat/MarkAsRead',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            conversationID,
+            userID: currentUserID,
+          }),
+        },
+      );
+
+      const result = await response.json();
+
+      console.log('MarkAsRead:', result);
+    } catch (error) {
+      console.log('MarkAsRead error:', error);
+    }
+  };
+
+  const handleUserTyping = (data: {
+    conversationID: number;
+    userID: number;
+    isTyping: boolean;
+  }) => {
+    if (
+      data.conversationID === conversationID &&
+      data.userID === targetUserID
+    ) {
+      setIsTargetTyping(data.isTyping);
+    }
+  };
+
+  chatConnection.on('UserTyping', handleUserTyping);
+
+  const handleTextChange = (value: string) => {
+    setText(value);
+
+    if (!isTypingSentRef.current && value.length > 0) {
+      isTypingSentRef.current = true;
+
+      chatConnection
+        .invoke('Typing', conversationID, currentUserID, true)
+        .catch(error => {
+          console.log('Typing true error:', error);
+        });
+    }
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = setTimeout(() => {
+      if (isTypingSentRef.current) {
+        isTypingSentRef.current = false;
+
+        chatConnection
+          .invoke('Typing', conversationID, currentUserID, false)
+          .catch(error => {
+            console.log('Typing false error:', error);
+          });
+      }
+    }, 1200);
+  };
+
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: '#FFF7FA' }}
@@ -722,24 +826,60 @@ export default function ChatScreen({
                     {renderMessageContent(item, isMe)}
                   </View>
 
-                  <Text
+                  <View
                     style={{
                       marginTop: 4,
-                      fontSize: 10,
-                      color: '#AAA',
-                      textAlign: isMe ? 'right' : 'left',
+                      flexDirection: 'row',
+                      justifyContent: isMe ? 'flex-end' : 'flex-start',
+                      alignItems: 'center',
                     }}
                   >
-                    {new Date(item.createdDate).toLocaleTimeString('th-TH', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </Text>
+                    {isMe && item.readDate && (
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          color: '#999',
+                          marginRight: 5,
+                        }}
+                      >
+                        อ่านแล้ว
+                      </Text>
+                    )}
+
+                    <Text
+                      style={{
+                        fontSize: 10,
+                        color: '#AAA',
+                      }}
+                    >
+                      {new Date(item.createdDate).toLocaleTimeString('th-TH', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </Text>
+                  </View>
                 </View>
               );
             }}
           />
-
+          {isTargetTyping && (
+            <View
+              style={{
+                paddingHorizontal: 18,
+                paddingVertical: 6,
+                backgroundColor: '#FFFFFF',
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: '#999',
+                }}
+              >
+                กำลังพิมพ์...
+              </Text>
+            </View>
+          )}
           {/* Input */}
           <View
             style={{
@@ -770,7 +910,7 @@ export default function ChatScreen({
 
             <TextInput
               value={text}
-              onChangeText={setText}
+              onChangeText={handleTextChange}
               placeholder="พิมพ์ข้อความ..."
               placeholderTextColor="#AAA"
               multiline
