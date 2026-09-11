@@ -13,6 +13,7 @@ import {
   PermissionsAndroid,
   Image,
   Linking,
+  Animated,
 } from 'react-native';
 import * as signalR from '@microsoft/signalr';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -41,6 +42,100 @@ type Props = {
   targetUserID: number;
   onBack: () => void;
 };
+
+function TypingIndicator() {
+  const dot1 = useRef(new Animated.Value(0)).current;
+  const dot2 = useRef(new Animated.Value(0)).current;
+  const dot3 = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animateDot = (animatedValue: Animated.Value, delay: number) => {
+      return Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+
+          Animated.timing(animatedValue, {
+            toValue: -5,
+            duration: 250,
+            useNativeDriver: true,
+          }),
+
+          Animated.timing(animatedValue, {
+            toValue: 0,
+            duration: 250,
+            useNativeDriver: true,
+          }),
+
+          Animated.delay(400 - delay),
+        ]),
+      );
+    };
+
+    const animation1 = animateDot(dot1, 0);
+    const animation2 = animateDot(dot2, 120);
+    const animation3 = animateDot(dot3, 240);
+
+    animation1.start();
+    animation2.start();
+    animation3.start();
+
+    return () => {
+      animation1.stop();
+      animation2.stop();
+      animation3.stop();
+    };
+  }, [dot1, dot2, dot3]);
+
+  return (
+    <View
+      style={{
+        alignSelf: 'flex-start',
+        marginHorizontal: 16,
+        marginBottom: 8,
+      }}
+    >
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          backgroundColor: '#FFFFFF',
+          paddingHorizontal: 14,
+          paddingVertical: 12,
+          borderRadius: 18,
+          borderBottomLeftRadius: 5,
+
+          shadowColor: '#000',
+          shadowOpacity: 0.05,
+          shadowRadius: 4,
+          shadowOffset: {
+            width: 0,
+            height: 2,
+          },
+
+          elevation: 2,
+        }}
+      >
+        {[dot1, dot2, dot3].map((dot, index) => (
+          <Animated.View
+            key={index}
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: 3.5,
+              backgroundColor: '#999',
+              marginHorizontal: 2,
+              transform: [
+                {
+                  translateY: dot,
+                },
+              ],
+            }}
+          />
+        ))}
+      </View>
+    </View>
+  );
+}
 
 export default function ChatScreen({
   conversationID,
@@ -159,9 +254,26 @@ export default function ChatScreen({
       );
     };
 
+    const handleUserTypeing = (data: {
+      conversationID: number;
+      userID: number;
+      isTyping: boolean;
+    }) => {
+      console.log('UserTyping:', data);
+
+      if (
+        data.conversationID === conversationID &&
+        data.userID === targetUserID
+      ) {
+        setIsTargetTyping(data.isTyping);
+      }
+    };
+
     chatConnection.on('ReceiveMessage', handleReceiveMessage);
 
     chatConnection.on('MessagesRead', handleMessagesRead);
+
+    chatConnection.on('UserTyping', handleUserTypeing);
 
     connectSignalR();
 
@@ -169,6 +281,8 @@ export default function ChatScreen({
       chatConnection.off('ReceiveMessage', handleReceiveMessage);
 
       chatConnection.off('MessagesRead', handleMessagesRead);
+
+      chatConnection.off('UserTyping', handleUserTypeing);
 
       if (chatConnection.state === signalR.HubConnectionState.Connected) {
         chatConnection
@@ -178,7 +292,7 @@ export default function ChatScreen({
           });
       }
     };
-  }, [conversationID]);
+  }, [conversationID, currentUserID, targetUserID]);
 
   useEffect(() => {
     const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
@@ -661,22 +775,6 @@ export default function ChatScreen({
       console.log('MarkAsRead error:', error);
     }
   };
-
-  const handleUserTyping = (data: {
-    conversationID: number;
-    userID: number;
-    isTyping: boolean;
-  }) => {
-    if (
-      data.conversationID === conversationID &&
-      data.userID === targetUserID
-    ) {
-      setIsTargetTyping(data.isTyping);
-    }
-  };
-
-  chatConnection.on('UserTyping', handleUserTyping);
-
   const handleTextChange = (value: string) => {
     setText(value);
 
@@ -862,24 +960,7 @@ export default function ChatScreen({
               );
             }}
           />
-          {isTargetTyping && (
-            <View
-              style={{
-                paddingHorizontal: 18,
-                paddingVertical: 6,
-                backgroundColor: '#FFFFFF',
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 12,
-                  color: '#999',
-                }}
-              >
-                กำลังพิมพ์...
-              </Text>
-            </View>
-          )}
+          {isTargetTyping && <TypingIndicator />}
           {/* Input */}
           <View
             style={{
